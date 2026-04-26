@@ -7,7 +7,7 @@ body {
   font-family: sans-serif;
 }
 body.denied {
-  background-color: rgb(204, 79, 79);
+  background-color: rgb(99, 44, 161);
   color: rgb(116, 122, 117);
   text-align: center;
   padding-top: 20%;
@@ -59,7 +59,7 @@ body.denied {
   left: 10px;
   font-size: 30px;
   font-weight: bold;
-  color: #df7620;
+  color: rgb(99, 44, 161);
 }
 #pauseBtn {
   position: absolute;
@@ -69,14 +69,14 @@ body.denied {
   font-size: 18px;
   cursor: pointer;
   border-radius: 20px;
-  background-color: #df7620;
+  background-color: rgb(99, 44, 161);
   color: white;
   border: none;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
 #pauseBtn:hover {
-  background-color: #a75e22;
+  background-color: rgb(156, 103, 216);
   transform: scale(1.1);
   box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
 }
@@ -88,14 +88,14 @@ body.denied {
   font-size: 20px;
   cursor: pointer;
   border-radius: 20px;
-  background-color: #df7620;
+  background-color: rgb(99, 44, 161);
   color: white;
   border: none;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
 #startBtn:hover {
-  background-color: #a75e22;
+  background-color: rgb(157, 106, 216);
   transform: scale(1.1);
 }
 .red {
@@ -128,7 +128,7 @@ body.denied {
   font-family: "Comic Sans MS", cursive, sans-serif;
   font-size: 100px;
   font-weight: bold;
-  color: #df7620;
+  color: #9320df;
   text-shadow: 1px 1px 2px black;
   z-index: 10;
 }
@@ -157,7 +157,7 @@ body.denied {
   font-family: "Comic Sans MS", cursive;
   font-weight: bold;
   color: white;
-  background-color: #df7620;
+  background-color: rgb(99, 44, 161);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -184,7 +184,7 @@ body.denied {
   color: white;
   margin: 15% auto;
   padding: 30px;
-  border: 1px solid #df7620;
+  border: 1px solid rgb(99, 44, 161);
   width: 400px;
   text-align: center;
   font-family: "Courier New", monospace;
@@ -210,7 +210,7 @@ body.denied {
 }
 
 .modal-content button:hover {
-  background-color: #a75e22;
+  background-color: rgb(180, 115, 255);
 }
 @media (max-width: 768px) {
   html,

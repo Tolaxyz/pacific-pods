@@ -1,4 +1,4 @@
-const validPassword = "smarty";
+const validPassword = "oceans";
 
 function checkPassword() {
   const input = document.getElementById("passwordInput").value;
@@ -99,7 +99,7 @@ function initializeGame() {
       isPaused = false;
       score = 0;
       obstacleLeft = 1000;
-      scoreDisplay.textContent = "$ETH: 0";
+      scoreDisplay.textContent = "$PODS: 0";
       gameOverText.classList.add("hidden");
       restartBtn.classList.add("hidden");
       pauseBtn.disabled = false;
@@ -137,7 +137,7 @@ function initializeGame() {
     if (obstacleLeft < -60) {
       obstacleLeft = 1000;
       score++;
-      scoreDisplay.textContent = "$ETH: " + score;
+      scoreDisplay.textContent = "$PODS: " + score;
     } else {
       obstacleLeft -= 10;
     }
@@ -159,7 +159,7 @@ function initializeGame() {
     obstacleLeft = 1000;
     character.style.bottom = "0px";
     obstacle.style.left = "1000px";
-    scoreDisplay.textContent = "$ETH: 0";
+    scoreDisplay.textContent = "$PODS: 0";
     gameOverText.classList.add("hidden");
     restartBtn.classList.add("hidden");
     pauseBtn.disabled = false;
