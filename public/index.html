@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pacific Pods</title>
+    <link rel="icon" type="image/jpeg" href="/images/logo.jpeg?v=3" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div id="loginModal" class="modal">
+      <div class="modal-content">
+        <h2>Pacific Pods Tournament</h2>
+        <p>Enter your unique username and tournament password.</p>
+
+        <input
+          type="text"
+          id="usernameInput"
+          placeholder="username"
+          maxlength="20"
+        />
+        <input type="password" id="passwordInput" placeholder="password" />
+
+        <button id="loginBtn">Enter Tournament</button>
+        <p id="errorText" style="color: red; display: none">Access Denied</p>
+      </div>
+    </div>
+
+    <div class="game-container" id="game">
+      <img src="images/character_run1.png" id="character" class="character" />
+      <img src="images/obstacle.png" id="obstacle" class="obstacle" />
+
+      <div class="score" id="score">$PODS: 0</div>
+
+      <div id="playerName" class="player-name"></div>
+      <div id="timerText" class="timer-text"></div>
+
+      <div id="leaderboardBox">
+        <h2>Top 20</h2>
+        <ol id="leaderboardList"></ol>
+      </div>
+
+      <div id="gameOverText" class="game-over hidden">
+        "you were supposed to jump!"
+      </div>
+
+      <button id="restartBtn" class="restart-button hidden">Start Again</button>
+    </div>
+
+    <button id="startBtn">Ready when you are!</button>
+    <button id="pauseBtn">Chill</button>
+    <div id="gameText">Pacific Pods</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>

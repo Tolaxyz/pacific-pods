@@ -1,0 +1,338 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f7fdff;
+  font-family: sans-serif;
+}
+
+.game-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background-size: cover;
+  overflow: hidden;
+  border: 2px solid #ccc;
+}
+
+.character {
+  position: absolute;
+  width: 100px;
+  bottom: 0;
+  left: 50px;
+}
+
+.obstacle {
+  position: absolute;
+  width: 140px;
+  bottom: 0;
+  left: 1000px;
+}
+
+.score {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 30px;
+  font-weight: bold;
+  color: rgb(99, 44, 161);
+  z-index: 20;
+}
+
+.player-name {
+  position: absolute;
+  top: 50px;
+  left: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  color: rgb(99, 44, 161);
+  z-index: 20;
+}
+
+.timer-text {
+  position: absolute;
+  top: 76px;
+  left: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #222;
+  z-index: 20;
+}
+
+#pauseBtn {
+  position: absolute;
+  top: 20px;
+  right: 300px;
+  padding: 13px 18px;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 20px;
+  background-color: rgb(99, 44, 161);
+  color: white;
+  border: none;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 30;
+}
+
+#pauseBtn:hover {
+  background-color: rgb(156, 103, 216);
+  transform: scale(1.1);
+  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+#startBtn {
+  position: absolute;
+  top: 40%;
+  right: 48%;
+  padding: 20px 25px;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 20px;
+  background-color: rgb(99, 44, 161);
+  color: white;
+  border: none;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 30;
+}
+
+#startBtn:hover {
+  background-color: rgb(157, 106, 216);
+  transform: scale(1.1);
+}
+
+#gameText {
+  position: absolute;
+  top: 80px;
+  width: 100%;
+  text-align: center;
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  font-size: 100px;
+  font-weight: bold;
+  color: #9320df;
+  text-shadow: 1px 1px 2px black;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.game-over {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Comic Sans MS", cursive;
+  font-size: 48px;
+  font-weight: bold;
+  color: black;
+  text-shadow: 2px 2px white;
+  z-index: 40;
+  text-align: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.restart-button {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 10px 20px;
+  font-size: 20px;
+  font-family: "Comic Sans MS", cursive;
+  font-weight: bold;
+  color: white;
+  background-color: rgb(99, 44, 161);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 40;
+  transition: transform 0.2s ease;
+}
+
+.restart-button:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.modal {
+  display: block;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.modal-content {
+  background-color: #222;
+  color: white;
+  margin: 12% auto;
+  padding: 30px;
+  border: 1px solid rgb(99, 44, 161);
+  width: 400px;
+  text-align: center;
+  font-family: "Courier New", monospace;
+  border-radius: 10px;
+}
+
+.modal-content input {
+  padding: 10px;
+  width: 80%;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+}
+
+.modal-content button {
+  padding: 10px 20px;
+  background-color: rgb(70, 72, 73);
+  border: none;
+  color: white;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.modal-content button:hover {
+  background-color: rgb(180, 115, 255);
+}
+
+#leaderboardBox {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  width: 260px;
+  max-height: 520px;
+  overflow-y: auto;
+  background: rgba(34, 34, 34, 0.92);
+  color: white;
+  padding: 15px;
+  border-radius: 15px;
+  z-index: 25;
+  font-family: sans-serif;
+}
+
+#leaderboardBox h2 {
+  margin-top: 0;
+  font-size: 20px;
+  text-align: center;
+}
+
+#leaderboardList {
+  padding-left: 24px;
+}
+
+#leaderboardList li {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .game-container {
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    position: relative;
+    background-size: cover;
+  }
+
+  .character {
+    width: 80px;
+    bottom: 0;
+  }
+
+  .obstacle {
+    width: 80px;
+    bottom: 0;
+  }
+
+  .score {
+    font-size: 20px;
+  }
+
+  .player-name,
+  .timer-text {
+    font-size: 13px;
+  }
+
+  #pauseBtn {
+    top: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    font-family: sans-serif;
+  }
+
+  #startBtn,
+  .restart-button {
+    padding: 10px 15px;
+    font-size: 16px;
+    font-family: sans-serif;
+  }
+
+  #startBtn {
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+  }
+
+  #gameText {
+    font-size: 30px;
+    font-family: sans-serif;
+  }
+
+  .game-over {
+    font-size: 20px;
+    font-family: sans-serif;
+  }
+
+  .modal-content {
+    width: 90%;
+    margin-top: 40%;
+    font-family: sans-serif;
+  }
+
+  .modal-content input {
+    width: 90%;
+    font-size: 16px;
+    font-family: sans-serif;
+  }
+
+  .modal-content button {
+    font-size: 16px;
+    font-family: sans-serif;
+  }
+
+  #leaderboardBox {
+    top: 105px;
+    right: 10px;
+    width: 170px;
+    max-height: 260px;
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  #leaderboardBox h2 {
+    font-size: 15px;
+  }
+
+  #leaderboardList li {
+    font-size: 12px;
+  }
+}
