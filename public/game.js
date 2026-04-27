@@ -23,16 +23,55 @@ let isAuthed = false;
 let isGameStarted = false;
 let isPaused = false;
 let lastServerState = null;
-let renderFrameId = null;
 let runFrame = 0;
 let runInterval = null;
+
+let tournamentStart = null;
 let tournamentEnd = null;
+let lobbyStart = null;
+let tournamentStatus = null;
+let winner = null;
 
 const runImages = ["images/character_run1.png", "images/character_run2.png"];
 
 function showError(message) {
   errorText.textContent = message;
   errorText.style.display = "block";
+}
+
+function showPopup(message) {
+  alert(message);
+}
+
+function saveTournamentData(data) {
+  tournamentStart = data.tournamentStart;
+  tournamentEnd = data.tournamentEnd;
+  lobbyStart = data.lobbyStart;
+  tournamentStatus = data.tournamentStatus;
+  winner = data.winner || null;
+}
+
+function lockGameControls() {
+  if (tournamentStatus !== "active") {
+    startBtn.disabled = true;
+    pauseBtn.disabled = true;
+    restartBtn.disabled = true;
+
+    startBtn.style.pointerEvents = "none";
+    pauseBtn.style.pointerEvents = "none";
+    restartBtn.style.pointerEvents = "none";
+
+    return;
+  }
+
+  startBtn.disabled = false;
+  startBtn.style.pointerEvents = "auto";
+
+  restartBtn.disabled = false;
+  restartBtn.style.pointerEvents = "auto";
+
+  pauseBtn.disabled = !isGameStarted;
+  pauseBtn.style.pointerEvents = isGameStarted ? "auto" : "none";
 }
 
 loginBtn.addEventListener("click", () => {
@@ -54,7 +93,8 @@ socket.on("auth:success", (data) => {
   isAuthed = true;
   loginModal.style.display = "none";
   playerName.textContent = `Player: ${data.username}`;
-  tournamentEnd = data.tournamentEnd;
+  saveTournamentData(data);
+  updateTimer();
 });
 
 socket.on("auth:error", (message) => {
@@ -62,20 +102,68 @@ socket.on("auth:error", (message) => {
 });
 
 socket.on("leaderboard:update", (data) => {
-  tournamentEnd = data.tournamentEnd;
+  saveTournamentData(data);
 
   leaderboardList.innerHTML = "";
 
-  data.leaderboard.forEach((player, index) => {
+  data.leaderboard.forEach((player) => {
     const li = document.createElement("li");
     li.textContent = `${player.username} — ${player.score} $PODS`;
     leaderboardList.appendChild(li);
   });
+
+  updateTimer();
+});
+
+socket.on("tournament:winner", (data) => {
+  winner = data.winner || null;
+
+  if (winner) {
+    gameOverText.textContent = `🏆 Tournament Winner: ${winner.username} — ${winner.score} $PODS`;
+  } else {
+    gameOverText.textContent = "Tournament ended. No winner.";
+  }
+
+  gameOverText.classList.remove("hidden");
+
+  isGameStarted = false;
+  isPaused = false;
+  stopRunningAnimation();
+
+  startBtn.disabled = true;
+  startBtn.textContent = "Tournament Ended";
+  startBtn.style.pointerEvents = "none";
+
+  pauseBtn.disabled = true;
+  pauseBtn.style.pointerEvents = "none";
+
+  restartBtn.disabled = true;
+  restartBtn.style.pointerEvents = "none";
 });
 
 startBtn.addEventListener("click", () => {
   if (!isAuthed) {
     showError("Please sign in first.");
+    return;
+  }
+
+  if (tournamentStatus === "not_open") {
+    showPopup("Tournament lobby is not open yet.");
+    return;
+  }
+
+  if (tournamentStatus === "waiting") {
+    showPopup("Tournament has not started yet. Get ready!");
+    return;
+  }
+
+  if (tournamentStatus === "ended") {
+    showPopup("Tournament has ended.");
+    return;
+  }
+
+  if (tournamentStatus !== "active") {
+    showPopup("Tournament is not active yet.");
     return;
   }
 
@@ -92,6 +180,7 @@ startBtn.addEventListener("click", () => {
   restartBtn.classList.add("hidden");
   startBtn.style.display = "none";
   pauseBtn.disabled = false;
+  pauseBtn.style.pointerEvents = "auto";
   pauseBtn.textContent = "Chill";
 
   gameText.style.display = "none";
@@ -101,6 +190,7 @@ startBtn.addEventListener("click", () => {
 });
 
 pauseBtn.addEventListener("click", () => {
+  if (tournamentStatus !== "active") return;
   if (!isGameStarted) return;
 
   isPaused = !isPaused;
@@ -114,6 +204,8 @@ pauseBtn.addEventListener("click", () => {
 });
 
 restartBtn.addEventListener("click", () => {
+  if (tournamentStatus !== "active") return;
+
   isGameStarted = false;
   isPaused = false;
   lastServerState = null;
@@ -126,10 +218,14 @@ restartBtn.addEventListener("click", () => {
 
   startBtn.style.display = "block";
   gameText.style.display = "block";
+
+  lockGameControls();
 });
 
 function sendJump() {
+  if (tournamentStatus !== "active") return;
   if (!isGameStarted || isPaused) return;
+
   socket.emit("game:jump");
 }
 
@@ -148,6 +244,8 @@ gameContainer.addEventListener("touchstart", (e) => {
 
 socket.on("game:started", (state) => {
   lastServerState = state;
+  saveTournamentData(state);
+  lockGameControls();
 });
 
 socket.on("game:state", (state) => {
@@ -175,10 +273,23 @@ socket.on("game:over", (data) => {
   restartBtn.classList.remove("hidden");
 
   pauseBtn.disabled = true;
+  pauseBtn.style.pointerEvents = "none";
+
+  lockGameControls();
 });
 
 socket.on("game:error", (message) => {
-  alert(message);
+  showPopup(message);
+
+  isGameStarted = false;
+  isPaused = false;
+  stopRunningAnimation();
+
+  startBtn.style.display = "block";
+  pauseBtn.disabled = true;
+  pauseBtn.style.pointerEvents = "none";
+
+  lockGameControls();
 });
 
 function startRunningAnimation() {
@@ -203,22 +314,68 @@ function stopRunningAnimation() {
 }
 
 function updateTimer() {
-  if (!tournamentEnd) {
+  if (!tournamentStart || !tournamentEnd || !lobbyStart) {
     timerText.textContent = "";
+    lockGameControls();
     return;
   }
 
-  const remaining = Math.max(0, tournamentEnd - Date.now());
+  const now = Date.now();
 
-  const hours = Math.floor(remaining / 3600000);
-  const minutes = Math.floor((remaining % 3600000) / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  timerText.textContent = `Tournament: ${hours}h ${minutes}m ${seconds}s`;
-
-  if (remaining <= 0) {
-    timerText.textContent = "Tournament ended";
+  if (now < lobbyStart) {
+    tournamentStatus = "not_open";
+    timerText.textContent = `Lobby opens in: ${formatTime(lobbyStart - now)}`;
+    startBtn.textContent = "Lobby Not Open";
+    lockGameControls();
+    return;
   }
+
+  if (now < tournamentStart) {
+    tournamentStatus = "waiting";
+    timerText.textContent = `Tournament starts in: ${formatTime(tournamentStart - now)}`;
+    startBtn.textContent = "Get Ready...";
+    lockGameControls();
+    return;
+  }
+
+  if (now <= tournamentEnd) {
+    tournamentStatus = "active";
+    timerText.textContent = `Tournament ends in: ${formatTime(tournamentEnd - now)}`;
+    startBtn.textContent = "Ready when you are!";
+    lockGameControls();
+    return;
+  }
+
+  tournamentStatus = "ended";
+  timerText.textContent = "Tournament ended";
+  startBtn.textContent = "Tournament Ended";
+
+  if (winner) {
+    gameOverText.textContent = `🏆 Tournament Winner: ${winner.username} — ${winner.score} $PODS`;
+    gameOverText.classList.remove("hidden");
+  }
+
+  lockGameControls();
 }
 
+function formatTime(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
+}
+
+lockGameControls();
 setInterval(updateTimer, 1000);

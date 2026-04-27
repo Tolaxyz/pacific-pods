@@ -13,16 +13,11 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const PASSWORD = "oceans";
 
-const GAME_WIDTH = 1000;
-const CHARACTER_X = 50;
-const CHARACTER_WIDTH = 100;
-const OBSTACLE_WIDTH = 140;
-
-const GROUND_Y = 0;
+// Game settings
 const JUMP_HEIGHT = 150;
 const JUMP_DURATION_MS = 1200;
 
-const OBSTACLE_SPEED = 360; // pixels per second
+const OBSTACLE_SPEED = 360;
 const START_OBSTACLE_X = 1000;
 const RESET_OBSTACLE_X = 1000;
 const OFFSCREEN_X = -80;
@@ -33,13 +28,20 @@ const COLLISION_HEIGHT = 60;
 
 const TICK_RATE = 1000 / 30;
 
-const TOURNAMENT_START = Date.now();
-const TOURNAMENT_DURATION_MS = 24 * 60 * 60 * 1000;
-const TOURNAMENT_END = TOURNAMENT_START + TOURNAMENT_DURATION_MS;
+// Tournament timing: Tuesday, April 28, 2026
+const TOURNAMENT_START = new Date("2026-04-28T11:00:00Z").getTime();
+const TOURNAMENT_END = new Date("2026-04-28T16:00:00Z").getTime();
+
+// Lobby opens 10 minutes before tournament
+const LOBBY_DURATION_MS = 10 * 60 * 1000;
+const LOBBY_START = TOURNAMENT_START - LOBBY_DURATION_MS;
 
 const users = new Map();
 const leaderboard = new Map();
 const sessions = new Map();
+
+let winnerAnnounced = false;
+let finalWinner = null;
 
 function cleanUsername(username) {
   return String(username || "")
@@ -55,10 +57,25 @@ function tournamentActive() {
   return Date.now() >= TOURNAMENT_START && Date.now() <= TOURNAMENT_END;
 }
 
+function getTournamentStatus() {
+  const now = Date.now();
+
+  if (now < LOBBY_START) return "not_open";
+  if (now >= LOBBY_START && now < TOURNAMENT_START) return "waiting";
+  if (now >= TOURNAMENT_START && now <= TOURNAMENT_END) return "active";
+
+  return "ended";
+}
+
 function getLeaderboard() {
   return [...leaderboard.values()]
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 20);
+}
+
+function getWinner() {
+  const topPlayers = getLeaderboard();
+  return topPlayers.length > 0 ? topPlayers[0] : null;
 }
 
 function calculateCharacterBottom(session, now) {
@@ -80,8 +97,30 @@ function emitLeaderboard() {
     leaderboard: getLeaderboard(),
     tournamentStart: TOURNAMENT_START,
     tournamentEnd: TOURNAMENT_END,
+    lobbyStart: LOBBY_START,
+    tournamentStatus: getTournamentStatus(),
+    serverTime: Date.now(),
+    winner: finalWinner,
+  });
+}
+
+function announceWinnerIfNeeded() {
+  const status = getTournamentStatus();
+
+  if (status !== "ended") return;
+  if (winnerAnnounced) return;
+
+  winnerAnnounced = true;
+  finalWinner = getWinner();
+
+  io.emit("tournament:winner", {
+    winner: finalWinner,
+    leaderboard: getLeaderboard(),
+    tournamentEnd: TOURNAMENT_END,
     serverTime: Date.now(),
   });
+
+  emitLeaderboard();
 }
 
 function endSession(socket, session, reason) {
@@ -104,6 +143,7 @@ function endSession(socket, session, reason) {
   });
 
   emitLeaderboard();
+  announceWinnerIfNeeded();
 }
 
 function startGameLoop(socket, session) {
@@ -114,9 +154,15 @@ function startGameLoop(socket, session) {
     const dt = Math.min((now - session.lastTick) / 1000, 0.05);
     session.lastTick = now;
 
-    if (!tournamentActive()) {
+    if (now < TOURNAMENT_START) {
       clearInterval(session.interval);
-      endSession(socket, session, "Tournament ended");
+      endSession(socket, session, "Tournament has not started yet.");
+      return;
+    }
+
+    if (now > TOURNAMENT_END) {
+      clearInterval(session.interval);
+      endSession(socket, session, "Tournament ended.");
       return;
     }
 
@@ -154,8 +200,20 @@ io.on("connection", (socket) => {
     leaderboard: getLeaderboard(),
     tournamentStart: TOURNAMENT_START,
     tournamentEnd: TOURNAMENT_END,
+    lobbyStart: LOBBY_START,
+    tournamentStatus: getTournamentStatus(),
     serverTime: Date.now(),
+    winner: finalWinner,
   });
+
+  if (finalWinner) {
+    socket.emit("tournament:winner", {
+      winner: finalWinner,
+      leaderboard: getLeaderboard(),
+      tournamentEnd: TOURNAMENT_END,
+      serverTime: Date.now(),
+    });
+  }
 
   socket.on("auth:join", ({ username, password }) => {
     username = cleanUsername(username);
@@ -193,6 +251,9 @@ io.on("connection", (socket) => {
       username,
       tournamentStart: TOURNAMENT_START,
       tournamentEnd: TOURNAMENT_END,
+      lobbyStart: LOBBY_START,
+      tournamentStatus: getTournamentStatus(),
+      winner: finalWinner,
     });
 
     emitLeaderboard();
@@ -200,14 +261,26 @@ io.on("connection", (socket) => {
 
   socket.on("game:start", () => {
     const username = socket.data.username;
+    const now = Date.now();
 
     if (!username) {
       socket.emit("game:error", "Sign in first.");
       return;
     }
 
-    if (!tournamentActive()) {
-      socket.emit("game:error", "Tournament is not active.");
+    if (now < LOBBY_START) {
+      socket.emit("game:error", "Tournament lobby is not open yet.");
+      return;
+    }
+
+    if (now < TOURNAMENT_START) {
+      socket.emit("game:error", "Tournament has not started yet. Get ready!");
+      return;
+    }
+
+    if (now > TOURNAMENT_END) {
+      socket.emit("game:error", "Tournament has ended.");
+      announceWinnerIfNeeded();
       return;
     }
 
@@ -232,6 +305,10 @@ io.on("connection", (socket) => {
     socket.emit("game:started", {
       score: 0,
       obstacleX: START_OBSTACLE_X,
+      tournamentStart: TOURNAMENT_START,
+      tournamentEnd: TOURNAMENT_END,
+      lobbyStart: LOBBY_START,
+      tournamentStatus: getTournamentStatus(),
     });
 
     startGameLoop(socket, session);
@@ -243,6 +320,7 @@ io.on("connection", (socket) => {
 
     const now = Date.now();
 
+    if (!tournamentActive()) return;
     if (session.isJumping) return;
     if (now - session.lastJumpAt < 250) return;
 
@@ -269,6 +347,15 @@ io.on("connection", (socket) => {
   });
 });
 
+// Broadcast timer/status every second
+setInterval(() => {
+  emitLeaderboard();
+  announceWinnerIfNeeded();
+}, 1000);
+
 server.listen(PORT, () => {
   console.log(`Pacific Pods server running on port ${PORT}`);
+  console.log(`Lobby opens: ${new Date(LOBBY_START).toUTCString()}`);
+  console.log(`Tournament starts: ${new Date(TOURNAMENT_START).toUTCString()}`);
+  console.log(`Tournament ends: ${new Date(TOURNAMENT_END).toUTCString()}`);
 });
