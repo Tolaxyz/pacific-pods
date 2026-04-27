@@ -15,7 +15,7 @@ const PASSWORD = "oceans";
 
 // Game settings
 const JUMP_HEIGHT = 150;
-const JUMP_DURATION_MS = 1200;
+const JUMP_DURATION_MS = 850; // improved responsiveness
 
 const OBSTACLE_SPEED = 360;
 const START_OBSTACLE_X = 1000;
@@ -322,7 +322,9 @@ io.on("connection", (socket) => {
 
     if (!tournamentActive()) return;
     if (session.isJumping) return;
-    if (now - session.lastJumpAt < 250) return;
+
+    // Lower cooldown = more responsive tap/jump handling
+    if (now - session.lastJumpAt < 120) return;
 
     session.isJumping = true;
     session.jumpStartTime = now;
@@ -347,7 +349,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Broadcast timer/status every second
 setInterval(() => {
   emitLeaderboard();
   announceWinnerIfNeeded();

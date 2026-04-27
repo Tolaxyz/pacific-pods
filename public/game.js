@@ -32,6 +32,14 @@ let lobbyStart = null;
 let tournamentStatus = null;
 let winner = null;
 
+// Client-side jump prediction for instant response
+let localJumping = false;
+let localJumpStart = 0;
+let localJumpFrame = null;
+
+const LOCAL_JUMP_HEIGHT = 150;
+const LOCAL_JUMP_DURATION = 850;
+
 const runImages = ["images/character_run1.png", "images/character_run2.png"];
 
 function showError(message) {
@@ -128,7 +136,9 @@ socket.on("tournament:winner", (data) => {
 
   isGameStarted = false;
   isPaused = false;
+
   stopRunningAnimation();
+  stopLocalJump();
 
   startBtn.disabled = true;
   startBtn.textContent = "Tournament Ended";
@@ -179,6 +189,7 @@ startBtn.addEventListener("click", () => {
   gameOverText.classList.add("hidden");
   restartBtn.classList.add("hidden");
   startBtn.style.display = "none";
+
   pauseBtn.disabled = false;
   pauseBtn.style.pointerEvents = "auto";
   pauseBtn.textContent = "Chill";
@@ -210,8 +221,11 @@ restartBtn.addEventListener("click", () => {
   isPaused = false;
   lastServerState = null;
 
+  stopLocalJump();
+
   gameOverText.classList.add("hidden");
   restartBtn.classList.add("hidden");
+
   scoreDisplay.textContent = "$PODS: 0";
   character.style.bottom = "0px";
   obstacle.style.left = "1000px";
@@ -226,7 +240,61 @@ function sendJump() {
   if (tournamentStatus !== "active") return;
   if (!isGameStarted || isPaused) return;
 
+  startLocalJump();
   socket.emit("game:jump");
+}
+
+function startLocalJump() {
+  if (localJumping) return;
+
+  localJumping = true;
+  localJumpStart = performance.now();
+
+  stopRunningAnimation();
+  character.src = "images/character_jump.png";
+
+  if (localJumpFrame) {
+    cancelAnimationFrame(localJumpFrame);
+  }
+
+  localJumpFrame = requestAnimationFrame(updateLocalJump);
+}
+
+function updateLocalJump(now) {
+  if (!localJumping) return;
+
+  if (isPaused || !isGameStarted) {
+    localJumpFrame = requestAnimationFrame(updateLocalJump);
+    return;
+  }
+
+  const elapsed = now - localJumpStart;
+
+  if (elapsed >= LOCAL_JUMP_DURATION) {
+    stopLocalJump();
+    character.style.bottom = "0px";
+
+    if (isGameStarted && !isPaused) {
+      startRunningAnimation();
+    }
+
+    return;
+  }
+
+  const progress = elapsed / LOCAL_JUMP_DURATION;
+  const height = Math.sin(progress * Math.PI) * LOCAL_JUMP_HEIGHT;
+
+  character.style.bottom = height + "px";
+  localJumpFrame = requestAnimationFrame(updateLocalJump);
+}
+
+function stopLocalJump() {
+  localJumping = false;
+
+  if (localJumpFrame) {
+    cancelAnimationFrame(localJumpFrame);
+    localJumpFrame = null;
+  }
 }
 
 document.addEventListener("keydown", (e) => {
@@ -236,11 +304,16 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-gameContainer.addEventListener("touchstart", (e) => {
-  if (!e.target.closest("button")) {
-    sendJump();
-  }
-});
+gameContainer.addEventListener(
+  "pointerdown",
+  (e) => {
+    if (!e.target.closest("button")) {
+      e.preventDefault();
+      sendJump();
+    }
+  },
+  { passive: false },
+);
 
 socket.on("game:started", (state) => {
   lastServerState = state;
@@ -255,9 +328,12 @@ socket.on("game:state", (state) => {
 
   scoreDisplay.textContent = "$PODS: " + state.score;
   obstacle.style.left = state.obstacleX + "px";
-  character.style.bottom = state.characterBottom + "px";
 
-  if (state.isJumping) {
+  if (!localJumping) {
+    character.style.bottom = state.characterBottom + "px";
+  }
+
+  if (state.isJumping || localJumping) {
     character.src = "images/character_jump.png";
   }
 });
@@ -267,6 +343,7 @@ socket.on("game:over", (data) => {
   isPaused = false;
 
   stopRunningAnimation();
+  stopLocalJump();
 
   gameOverText.textContent = `"you were supposed to jump!" Final score: ${data.finalScore}`;
   gameOverText.classList.remove("hidden");
@@ -283,9 +360,12 @@ socket.on("game:error", (message) => {
 
   isGameStarted = false;
   isPaused = false;
+
   stopRunningAnimation();
+  stopLocalJump();
 
   startBtn.style.display = "block";
+
   pauseBtn.disabled = true;
   pauseBtn.style.pointerEvents = "none";
 
@@ -296,7 +376,7 @@ function startRunningAnimation() {
   if (runInterval) clearInterval(runInterval);
 
   runInterval = setInterval(() => {
-    if (!isGameStarted || isPaused) return;
+    if (!isGameStarted || isPaused || localJumping) return;
 
     runFrame = (runFrame + 1) % runImages.length;
 
@@ -305,7 +385,7 @@ function startRunningAnimation() {
     if (bottom <= 5) {
       character.src = runImages[runFrame];
     }
-  }, 150);
+  }, 120);
 }
 
 function stopRunningAnimation() {
