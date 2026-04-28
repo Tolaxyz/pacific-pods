@@ -5,10 +5,7 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
-
-const io = new Server(server, {
-  transports: ["websocket"],
-});
+const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
@@ -18,7 +15,7 @@ const PASSWORD = "oceans";
 
 // Game settings
 const JUMP_HEIGHT = 150;
-const JUMP_DURATION_MS = 850;
+const JUMP_DURATION_MS = 850; // improved responsiveness
 
 const OBSTACLE_SPEED = 360;
 const START_OBSTACLE_X = 1000;
@@ -29,22 +26,19 @@ const COLLISION_LEFT = 40;
 const COLLISION_RIGHT = 130;
 const COLLISION_HEIGHT = 60;
 
-// Optimized for more players
-const TICK_RATE = 1000 / 15;
+const TICK_RATE = 1000 / 20;
 
-// Tournament timing
+// Tournament timing: Tuesday, April 28, 2026
 const TOURNAMENT_START = new Date("2026-04-28T11:00:00Z").getTime();
 const TOURNAMENT_END = new Date("2026-04-28T16:00:00Z").getTime();
 
+// Lobby opens 10 minutes before tournament
 const LOBBY_DURATION_MS = 10 * 60 * 1000;
 const LOBBY_START = TOURNAMENT_START - LOBBY_DURATION_MS;
 
 const users = new Map();
 const leaderboard = new Map();
 const sessions = new Map();
-
-let cachedLeaderboard = [];
-let leaderboardDirty = true;
 
 let winnerAnnounced = false;
 let finalWinner = null;
@@ -74,14 +68,9 @@ function getTournamentStatus() {
 }
 
 function getLeaderboard() {
-  if (!leaderboardDirty) return cachedLeaderboard;
-
-  cachedLeaderboard = [...leaderboard.values()]
+  return [...leaderboard.values()]
     .sort((a, b) => b.score - a.score || a.username.localeCompare(b.username))
     .slice(0, 20);
-
-  leaderboardDirty = false;
-  return cachedLeaderboard;
 }
 
 function getWinner() {
@@ -145,8 +134,6 @@ function endSession(socket, session, reason) {
       score: session.score,
       updatedAt: Date.now(),
     });
-
-    leaderboardDirty = true;
   }
 
   socket.emit("game:over", {
@@ -155,6 +142,7 @@ function endSession(socket, session, reason) {
     bestScore: Math.max(previousBest, session.score),
   });
 
+  emitLeaderboard();
   announceWinnerIfNeeded();
 }
 
@@ -257,8 +245,6 @@ io.on("connection", (socket) => {
         score: 0,
         updatedAt: Date.now(),
       });
-
-      leaderboardDirty = true;
     }
 
     socket.emit("auth:success", {
@@ -336,6 +322,8 @@ io.on("connection", (socket) => {
 
     if (!tournamentActive()) return;
     if (session.isJumping) return;
+
+    // Lower cooldown = more responsive tap/jump handling
     if (now - session.lastJumpAt < 120) return;
 
     session.isJumping = true;
@@ -364,7 +352,7 @@ io.on("connection", (socket) => {
 setInterval(() => {
   emitLeaderboard();
   announceWinnerIfNeeded();
-}, 5000);
+}, 3000);
 
 server.listen(PORT, () => {
   console.log(`Pacific Pods server running on port ${PORT}`);
